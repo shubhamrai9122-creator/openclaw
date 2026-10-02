@@ -568,16 +568,8 @@ export function defineSetupPluginEntry<TPlugin>(plugin: TPlugin) {
   return { plugin };
 }
 
-type ChatChannelPluginBase<TResolvedAccount, Probe, Audit, GatewayVersion extends 1 | 2> = Omit<
-  ChannelPlugin<TResolvedAccount, Probe, Audit, GatewayVersion>,
-  "capabilities" | "security" | "pairing" | "threading" | "outbound"
-> &
-  Partial<
-    Pick<
-      ChannelPlugin<TResolvedAccount, Probe, Audit, GatewayVersion>,
-      "capabilities" | "security" | "pairing" | "threading" | "outbound"
-    >
-  >;
+type ChatChannelPluginBase<Plugin> = Omit<Plugin, "capabilities"> &
+  Partial<Pick<ChannelPlugin, "capabilities">>;
 
 type ChatChannelSecurityOptions<TResolvedAccount extends { accountId?: string | null }> = {
   dm: {
@@ -717,7 +709,7 @@ export function createChatChannelPlugin<
   Audit = unknown,
   GatewayVersion extends 1 | 2 = 1,
 >(params: {
-  base: ChatChannelPluginBase<TResolvedAccount, Probe, Audit, GatewayVersion>;
+  base: ChatChannelPluginBase<ChannelPlugin<TResolvedAccount, Probe, Audit, GatewayVersion>>;
   security?:
     | ChannelSecurityAdapter<TResolvedAccount>
     | ChatChannelSecurityOptions<TResolvedAccount>;

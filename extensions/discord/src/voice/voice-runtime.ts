@@ -45,10 +45,6 @@ const DISCORD_VOICE_FATAL_AUTOJOIN_ERROR_PATTERNS = [
   "forbidden",
 ];
 
-function formatAutoJoinFailureKey(entry: { guildId: string; channelId: string }): string {
-  return `${entry.guildId}:${entry.channelId}`;
-}
-
 function isFatalAutoJoinFailure(message: string): boolean {
   const normalized = message.toLowerCase();
   return DISCORD_VOICE_FATAL_AUTOJOIN_ERROR_PATTERNS.some((pattern) =>
@@ -509,7 +505,7 @@ export class DiscordVoiceManager implements DiscordVoiceListenerManager {
       }
       this.guildLifecycles.set(guildId, { status: "active", generation, instance: entry });
       if (result.ok) {
-        this.fatalAutoJoinFailures.delete(formatAutoJoinFailureKey({ guildId, channelId }));
+        this.fatalAutoJoinFailures.delete(`${guildId}:${channelId}`);
         // Recovery can finish after the last human leaves. Keep capture registered, not presence.
         if (waitingForOccupancy()) {
           await this.leave({ guildId, channelId });
@@ -675,7 +671,7 @@ export class DiscordVoiceManager implements DiscordVoiceListenerManager {
     if (captureOrigin && !captureOrigin.isCurrent()) {
       return { ok: false, message: "Discord voice join was cancelled." };
     }
-    const failureKey = formatAutoJoinFailureKey(entry);
+    const failureKey = `${entry.guildId}:${entry.channelId}`;
     const fatalFailure = this.fatalAutoJoinFailures.get(failureKey);
     if (fatalFailure) {
       if (!fatalFailure.skipLogged) {

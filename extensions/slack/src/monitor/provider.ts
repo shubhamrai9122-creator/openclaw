@@ -502,15 +502,7 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts) {
   });
   let presenceRequestAbort: AbortController | undefined;
   let presenceMonitor: ReturnType<typeof createSlackPresenceMonitor> | undefined;
-  let presenceMonitorStarted = false;
   let runtimeStarted = false;
-  const startPresenceMonitor = () => {
-    if (!presenceMonitor || presenceMonitorStarted) {
-      return;
-    }
-    presenceMonitor.start();
-    presenceMonitorStarted = true;
-  };
   const installSlackPresenceRuntime = (identity: SlackInstallationIdentity) => {
     if (
       !presenceEventsEnabled ||
@@ -545,7 +537,7 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts) {
       error: runtime.error,
     });
     if (runtimeStarted) {
-      startPresenceMonitor();
+      presenceMonitor.start();
     }
   };
   const handleSlackMessage = createSlackMessageHandler({
@@ -576,7 +568,7 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts) {
       });
       void ctx.readRuntimeContext();
       if (runtimeStarted) {
-        startPresenceMonitor();
+        presenceMonitor?.start();
       }
     })();
     return await workspaceRuntimePromise;
@@ -685,7 +677,7 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts) {
     await installSlackRuntimeForIdentity(installationIdentity);
     durableIngress.start();
     runtimeStarted = true;
-    startPresenceMonitor();
+    presenceMonitor?.start();
     if (slackMode === "http" && slackHttpHandler) {
       unregisterHttpHandler = registerSlackHttpHandler({
         path: slackWebhookPath,

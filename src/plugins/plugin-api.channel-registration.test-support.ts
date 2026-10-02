@@ -1,3 +1,4 @@
+import { expectTypeOf } from "vitest";
 import type {
   ChannelGatewayAdapter,
   ChannelGatewayAdapterV2,
@@ -51,16 +52,15 @@ export async function verifyChannelRegistrationTypes(params: {
     },
   };
   await pluginV2.gateway?.startAccount?.(contextV2);
-  // @ts-expect-error A V2 plugin cannot be manually started without its account scheduler.
-  await pluginV2.gateway?.startAccount?.(legacyContext);
+  expectTypeOf(legacyContext).not.toMatchTypeOf<
+    Parameters<NonNullable<NonNullable<typeof pluginV2.gateway>["startAccount"]>>[0]
+  >();
   const status: NonNullable<ChannelPlugin<Account, Probe, Audit>["status"]> = {
     probeAccount: async () => ({ online: true }),
     auditAccount: async ({ probe }) => ({ count: probe?.online ? 1 : 0 }),
     buildAccountSnapshot({ account, probe, audit }) {
-      // @ts-expect-error The author's concrete Probe type must survive registration typing.
-      probe?.missing;
-      // @ts-expect-error The author's concrete Audit type must survive registration typing.
-      audit?.missing;
+      expectTypeOf(probe).toEqualTypeOf<Probe | undefined>();
+      expectTypeOf(audit).toEqualTypeOf<Audit | undefined>();
       return {
         accountId: account.accountId,
         connected: probe?.online,
@@ -72,8 +72,9 @@ export async function verifyChannelRegistrationTypes(params: {
   const probedV2: ChannelPlugin<Account, Probe, Audit, 2> = { ...pluginV2, status };
   const registrationV2: OpenClawPluginChannelRegistration<typeof probedV2> = { plugin: probedV2 };
   await registrationV2.plugin.gateway?.startAccount?.(contextV2);
-  // @ts-expect-error The named V2 registration retains the required scheduler.
-  await registrationV2.plugin.gateway?.startAccount?.(legacyContext);
+  expectTypeOf(legacyContext).not.toMatchTypeOf<
+    Parameters<NonNullable<NonNullable<typeof registrationV2.plugin.gateway>["startAccount"]>>[0]
+  >();
   api.registerChannel(registrationV2);
   api.registerChannel(probedV1);
   api.registerChannel({ plugin: probedV2 });
@@ -90,8 +91,9 @@ export async function verifyChannelRegistrationTypes(params: {
     },
   };
   await current.startAccount?.(contextV2);
-  // @ts-expect-error V2 callers must provide the account's scheduling authority.
-  await current.startAccount?.(legacyContext);
+  expectTypeOf(legacyContext).not.toMatchTypeOf<
+    Parameters<NonNullable<typeof current.startAccount>>[0]
+  >();
   api.registerChannel({ ...base, gateway: legacy });
   api.registerChannel({ plugin: { ...base, gateway: current } });
   api.registerChannel(params.registration);
@@ -160,8 +162,7 @@ export async function verifyServiceRegistrationTypes(params: {
     },
   };
   await current.start(contextV2);
-  // @ts-expect-error V2 service callers must provide their scheduling authority.
-  await current.start(legacyContext);
+  expectTypeOf(legacyContext).not.toMatchTypeOf<Parameters<typeof current.start>[0]>();
   api.registerService(params.service);
   api.registerService({
     id: "inline-legacy",

@@ -7,8 +7,7 @@ import {
   asDateTimestampMs,
   resolveExpiresAtMsFromDurationMs,
 } from "openclaw/plugin-sdk/number-runtime";
-import type { PluginServiceSchedulerV1 } from "openclaw/plugin-sdk/plugin-entry";
-import type { PluginLogger } from "openclaw/plugin-sdk/plugin-entry";
+import type { PluginLogger, PluginServiceSchedulerV1 } from "openclaw/plugin-sdk/plugin-entry";
 import { resolveConfiguredCapabilityProvider } from "openclaw/plugin-sdk/provider-selection-runtime";
 import type { TalkEvent } from "openclaw/plugin-sdk/realtime-voice";
 import {
@@ -211,7 +210,7 @@ export class VoiceCallWebhookServer {
     this.coreConfig = coreConfig ?? null;
     this.fullConfig = fullConfig ?? null;
     this.agentRuntime = agentRuntime ?? null;
-    this.logger = logger ?? {
+    const rawLogger = logger ?? {
       info: console.log,
       warn: console.warn,
       error: console.error,
@@ -220,7 +219,6 @@ export class VoiceCallWebhookServer {
     // Route all webhook diagnostics through a single logging path with
     // consistent [voice-call] attribution so operational tooling can
     // identify voice-call messages on the shared plugin logger.
-    const rawLogger = this.logger;
     const rawDebug = rawLogger.debug;
     this.logger = {
       info: (msg: string) => rawLogger.info(`[voice-call] ${msg}`),

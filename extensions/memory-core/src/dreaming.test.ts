@@ -255,10 +255,7 @@ function createDreamingTestContext(
 }
 
 function mockStringMessages(mock: { mock: { calls: unknown[][] } }): string[] {
-  return mock.mock.calls.map((call) => {
-    const message = call[0];
-    return typeof message === "string" ? message : "";
-  });
+  return mock.mock.calls.map(([message]) => (typeof message === "string" ? message : ""));
 }
 
 function expectLogContains(mock: { mock: { calls: unknown[][] } }, expected: string): void {
@@ -270,11 +267,7 @@ function expectLogNotContains(mock: { mock: { calls: unknown[][] } }, expected: 
 }
 
 function requireAddCall(harness: { addCalls: CronAddInput[] }, index: number): CronAddInput {
-  const call = harness.addCalls[index];
-  if (!call) {
-    throw new Error(`expected cron add call ${index}`);
-  }
-  return call;
+  return expectDefined(harness.addCalls[index], `expected cron add call ${index}`);
 }
 
 function requireAgentTurnPayload(
@@ -296,16 +289,11 @@ function expectCronSchedule(
   expect(schedule?.tz).toBe(tz);
 }
 
-function getBeforeAgentReplyHandler(
-  onMock: ReturnType<typeof vi.fn>,
-): (
-  event: { cleanedBody: string },
-  ctx: { agentId?: string; trigger?: string; workspaceDir?: string; sessionKey?: string },
-) => Promise<unknown> {
-  const call = onMock.mock.calls.find(([eventName]) => eventName === "before_agent_reply");
-  if (!call) {
-    throw new Error("before_agent_reply hook was not registered");
-  }
+function getBeforeAgentReplyHandler(onMock: ReturnType<typeof vi.fn>) {
+  const call = expectDefined(
+    onMock.mock.calls.find(([eventName]) => eventName === "before_agent_reply"),
+    "before_agent_reply hook was not registered",
+  );
   return call[1] as (
     event: { cleanedBody: string },
     ctx: { agentId?: string; trigger?: string; workspaceDir?: string; sessionKey?: string },

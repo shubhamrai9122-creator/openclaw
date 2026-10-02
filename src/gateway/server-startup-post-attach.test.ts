@@ -2000,9 +2000,7 @@ describe("startGatewayPostAttachRuntime", () => {
       } finally {
         reservation?.reject();
         await runtime.startupSettled;
-        await owner.currentServices()?.stop();
-        await replacementHandle?.stop();
-        for (const [handle] of onPluginServices.mock.calls) {
+        for (const handle of new Set([replacementHandle, ...onPluginServices.mock.calls.flat()])) {
           await handle?.stop();
         }
       }

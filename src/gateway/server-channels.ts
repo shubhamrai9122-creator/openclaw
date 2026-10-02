@@ -42,10 +42,7 @@ import {
   runtimeForLogger,
   type SubsystemLogger,
 } from "../logging/subsystem.js";
-import {
-  createPluginRuntimeCapabilityLease,
-  type PluginRuntimeCapabilityLease,
-} from "../plugins/capability-lease.js";
+import { createPluginRuntimeCapabilityLease } from "../plugins/capability-lease.js";
 import {
   createPluginHttpRouteHandoff,
   withPluginHttpRouteRegistry,
@@ -642,23 +639,19 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
         store.lifetimes.set(id, lifetime);
         let handedOffTask = false;
         const log = ensureChannelLog(channelId);
-        let scopedChannelRuntime: {
-          channelRuntime?: PluginRuntimeChannel;
-          dispose: () => void;
-        } | null = null;
+        let scopedChannelRuntime: ReturnType<
+          typeof createTaskScopedChannelRuntime<PluginRuntimeChannel>
+        > | null = null;
         let channelRuntimeForTask: PluginRuntimeChannel | undefined;
         let stopApprovalBootstrap: () => Promise<void> = async () => {};
-        const stopTaskScopedApprovalRuntime = async () => {
-          const scopedRuntime = scopedChannelRuntime;
-          scopedChannelRuntime = null;
-          const stopBootstrap = stopApprovalBootstrap;
-          stopApprovalBootstrap = async () => {};
-          scopedRuntime?.dispose();
-          await stopBootstrap();
-        };
         const cleanupTaskScopedApprovalRuntime = async (label: string) => {
           try {
-            await stopTaskScopedApprovalRuntime();
+            const scopedRuntime = scopedChannelRuntime;
+            scopedChannelRuntime = null;
+            const stopBootstrap = stopApprovalBootstrap;
+            stopApprovalBootstrap = async () => {};
+            scopedRuntime?.dispose();
+            await stopBootstrap();
           } catch (error) {
             log.error?.(`[${id}] ${label}: ${formatErrorMessage(error)}`);
           }
@@ -1235,17 +1228,15 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
           abort?.abort();
           const log = ensureChannelLog(channelId);
           let outcome: ChannelAccountStopOutcome = { status: "fulfilled" };
-          let capabilityLease: PluginRuntimeCapabilityLease | undefined;
           let stopAccountSettled = true;
-          try {
-            // Running and failed-stop accounts belong to their admitted plugin and config,
-            // even after publication removes the account or replaces its registration.
-            const teardown = lifetime?.teardown;
-            if (teardown || (fallbackStop && plugin)) {
-              // Teardown can outlive the start task. Its own lease permits route and status
-              // writes only until this stop attempt completes or times out.
-              const stopLease = createPluginRuntimeCapabilityLease("channel account stop");
-              capabilityLease = stopLease;
+          // Running and failed-stop accounts belong to their admitted plugin and config,
+          // even after publication removes the account or replaces its registration.
+          const teardown = lifetime?.teardown;
+          if (teardown || (fallbackStop && plugin)) {
+            // Teardown can outlive the start task. Its own lease permits route and status
+            // writes only until this stop attempt completes or times out.
+            const stopLease = createPluginRuntimeCapabilityLease("channel account stop");
+            try {
               // A plugin stopAccount that never settles must not wedge every
               // stop-driven flow (health monitor sweeps, thaw recovery, reload).
               // Ordinary recovery retains the timed-out owner; explicit handoff
@@ -1301,12 +1292,12 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
                   delete stopState.cleanup;
                 }
               }
+            } catch (error) {
+              outcome = { status: "rejected", error };
+              log.warn?.(`[${id}] stopAccount failed: ${formatErrorMessage(error)}`);
+            } finally {
+              stopLease.revoke();
             }
-          } catch (error) {
-            outcome = { status: "rejected", error };
-            log.warn?.(`[${id}] stopAccount failed: ${formatErrorMessage(error)}`);
-          } finally {
-            capabilityLease?.revoke();
           }
           const stoppedCleanly = await waitForChannelStopGracefully(
             task,

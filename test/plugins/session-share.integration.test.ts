@@ -144,7 +144,11 @@ function catalogFixture(stateDir: string) {
     stop: async () => {
       scheduler.beginClose();
       try {
-        await Promise.all(services.map((service) => service.stop?.(serviceContext)));
+        await Promise.all(
+          services.map(async (service) => {
+            await service.stop?.(serviceContext);
+          }),
+        );
       } finally {
         await scheduler.stop();
       }

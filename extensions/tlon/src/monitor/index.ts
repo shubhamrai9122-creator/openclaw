@@ -643,16 +643,22 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts): Promise<void> 
 
   const watchedChannels = new Set<string>(groupChannels);
 
-  const refreshWatchedChannels = async (): Promise<number> => {
-    const { channels: discoveredChannels } = await fetchInitData(api, runtime);
-    let newCount = 0;
-    for (const channelNest of discoveredChannels) {
+  const addWatchedChannels = (channels: readonly string[], logPrefix?: string): number => {
+    const previousCount = watchedChannels.size;
+    for (const channelNest of channels) {
       if (!watchedChannels.has(channelNest)) {
         watchedChannels.add(channelNest);
-        newCount++;
+        if (logPrefix) {
+          runtime.log?.(`${logPrefix}${channelNest}`);
+        }
       }
     }
-    return newCount;
+    return watchedChannels.size - previousCount;
+  };
+
+  const refreshWatchedChannels = async (): Promise<number> => {
+    const { channels: discoveredChannels } = await fetchInitData(api, runtime);
+    return addWatchedChannels(discoveredChannels);
   };
 
   const { resolveAllCites } = createTlonCitationResolver({
@@ -1095,17 +1101,8 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts): Promise<void> 
     settingsManager.onChange((newSettings) => {
       currentSettings = newSettings;
 
-      if (newSettings.groupChannels?.length) {
-        const newChannels = newSettings.groupChannels;
-        for (const ch of newChannels) {
-          if (!watchedChannels.has(ch)) {
-            watchedChannels.add(ch);
-            runtime.log?.(`[tlon] Settings: now watching channel ${ch}`);
-          }
-        }
-        // Note: we don't remove channels from watchedChannels to avoid missing messages
-        // during transitions. The authorization check handles access control.
-      }
+      // Keep watching during transitions; the authorization check handles removals.
+      addWatchedChannels(newSettings.groupChannels ?? [], "[tlon] Settings: now watching channel ");
 
       // Recompute effective settings from the latest snapshot so deletions
       // cleanly fall back to file config and empty arrays remain authoritative.
@@ -1151,12 +1148,7 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts): Promise<void> 
               joinedChannels.filter((channel): channel is string => typeof channel === "string"),
             ).filter((channel) => channel.startsWith("chat/"));
 
-            for (const channelNest of discoveredChannels) {
-              if (!watchedChannels.has(channelNest)) {
-                watchedChannels.add(channelNest);
-                runtime.log?.(`[tlon] Auto-detected new channel: ${channelNest}`);
-              }
-            }
+            addWatchedChannels(discoveredChannels, "[tlon] Auto-detected new channel: ");
 
             if (!effectiveAutoAcceptGroupInvites) {
               return;
@@ -1313,9 +1305,7 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts): Promise<void> 
 
     if (effectiveAutoDiscoverChannels) {
       const { channels: discoveredChannels } = await fetchInitData(api, runtime);
-      for (const channelNest of discoveredChannels) {
-        watchedChannels.add(channelNest);
-      }
+      addWatchedChannels(discoveredChannels);
       runtime.log?.(`[tlon] Watching ${watchedChannels.size} channel(s)`);
     }
 
@@ -1344,12 +1334,7 @@ export async function monitorTlonProvider(opts: MonitorTlonOpts): Promise<void> 
           if (discoveryScheduler.signal.aborted) {
             return;
           }
-          for (const channelNest of discoveredChannels) {
-            if (!watchedChannels.has(channelNest)) {
-              watchedChannels.add(channelNest);
-              runtime.log?.(`[tlon] Now watching new channel: ${channelNest}`);
-            }
-          }
+          addWatchedChannels(discoveredChannels, "[tlon] Now watching new channel: ");
         } catch (error: unknown) {
           runtime.error?.(`[tlon] Channel refresh error: ${formatErrorMessage(error)}`);
         }

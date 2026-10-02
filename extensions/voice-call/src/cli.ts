@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { Command } from "commander";
+import { createDeferred } from "openclaw/plugin-sdk/concurrency-runtime";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
 import { formatErrorMessage } from "openclaw/plugin-sdk/error-runtime";
 import { MAX_TCP_PORT } from "openclaw/plugin-sdk/number-runtime";
@@ -129,7 +130,7 @@ async function runWithStandaloneRuntime(
   run: (ensureRuntime: () => Promise<VoiceCallRuntime>) => Promise<void>,
 ): Promise<void> {
   let runtime: Promise<VoiceCallRuntime> | undefined;
-  const interrupted = Promise.withResolvers<void>();
+  const interrupted = createDeferred<void>();
   let exitSignal: "SIGINT" | "SIGTERM" | undefined;
   const interrupt = (signal: "SIGINT" | "SIGTERM") => {
     exitSignal ??= signal;

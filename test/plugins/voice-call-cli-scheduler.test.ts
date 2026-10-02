@@ -1,16 +1,17 @@
 import { Command } from "commander";
 import { afterEach, expect, it, vi } from "vitest";
 import voiceCallPlugin from "../../extensions/voice-call/index.js";
-import { createDeferredCore } from "../shared/deferred.js";
+import { createPluginRuntimeMock } from "../../src/plugin-sdk/test-helpers/plugin-runtime-mock.js";
+import { LegacyPluginSdkResourceHost } from "../../src/plugins/legacy-sdk-resource-host.js";
+import { createPluginRecord } from "../../src/plugins/loader-records.js";
+import { getPluginInstance } from "../../src/plugins/plugin-instance-scope.js";
+import { createTestPluginRegistry } from "../../src/plugins/registry-runtime.test-helpers.js";
+import type { PluginServiceSchedulerV1 } from "../../src/plugins/service-scheduler.types.js";
+import { createDeferredCore } from "../../src/shared/deferred.js";
 import {
   createGatewaySchedulerClock,
   createTestGatewayScheduler,
-} from "../test-utils/gateway-scheduler-clock.js";
-import { LegacyPluginSdkResourceHost } from "./legacy-sdk-resource-host.js";
-import { createPluginRecord } from "./loader-records.js";
-import { getPluginInstance } from "./plugin-instance-scope.js";
-import { createTestPluginRegistry } from "./registry-runtime.test-helpers.js";
-import type { PluginServiceSchedulerV1 } from "./service-scheduler.types.js";
+} from "../../src/test-utils/gateway-scheduler-clock.js";
 
 const mocks = vi.hoisted(() => ({ createRuntime: vi.fn(), callGateway: vi.fn() }));
 vi.mock("../../extensions/voice-call/runtime-entry.js", () => ({
@@ -66,7 +67,7 @@ it.each([
   const root = createTestGatewayScheduler(clock.clock);
   const host = new LegacyPluginSdkResourceHost();
   host.bindScheduler(root);
-  const builder = createTestPluginRegistry();
+  const builder = createTestPluginRegistry(createPluginRuntimeMock());
   const record = createPluginRecord({
     id: "voice-call",
     source: "test",
@@ -117,7 +118,7 @@ it.each([
     return true;
   }) as typeof process.stdout.write);
   try {
-    await host.run(() => voiceCallPlugin.register(api));
+    host.run(() => voiceCallPlugin.register(api));
     await host.run(() =>
       builder.registry.cliRegistrars[0]!.register({
         program,
