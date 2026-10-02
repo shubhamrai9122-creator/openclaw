@@ -43,8 +43,8 @@ it("retains the registered CLI owner's scheduler and joins its work before retir
   let scheduler: PluginServiceSchedulerV1 | undefined;
   let lateResolver: (() => PluginServiceSchedulerV1) | undefined;
   api.registerCli(
-    ({ program }) => {
-      program.command("scheduled").action(() => {
+    ({ program: cliProgram }) => {
+      cliProgram.command("scheduled").action(() => {
         scheduler = resolvePluginServiceScheduler();
         lateResolver = AsyncLocalStorage.bind(resolvePluginServiceScheduler);
         scheduler.schedule({

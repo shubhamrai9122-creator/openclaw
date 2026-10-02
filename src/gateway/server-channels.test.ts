@@ -13,11 +13,7 @@ import type {
   ChannelAccountLinkState,
   ChannelGatewayContext,
 } from "../channels/plugins/types.adapters.js";
-import type {
-  ChannelAccountSnapshot,
-  ChannelId,
-  ChannelPlugin,
-} from "../channels/plugins/types.public.js";
+import type { ChannelAccountSnapshot, ChannelId } from "../channels/plugins/types.public.js";
 import { formatGatewayChannelsStatusLines } from "../commands/channels/status.runtime.js";
 import type { OpenClawConfig } from "../config/types.openclaw.js";
 import { getGatewayNativeApprovalRuntime } from "../infra/approval-gateway-runtime-context.js";
@@ -977,6 +973,7 @@ describe("server-channels auto restart", () => {
     const manager = createManager();
     const starting = manager.startChannel("discord", DEFAULT_ACCOUNT_ID);
     let stopped: Promise<unknown> | undefined;
+    let joinedStop: Promise<void> | undefined;
     try {
       await preparing.promise;
       stopped = manager
@@ -988,18 +985,25 @@ describe("server-channels auto restart", () => {
       expect(startAccount).not.toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(5_000);
       expect(await stopped).toBeInstanceOf(Error);
+      let joined = false;
+      joinedStop = manager
+        .stopChannel("discord", DEFAULT_ACCOUNT_ID, { manual: false, strict: true })
+        .then(() => {
+          joined = true;
+        });
+      await flushMicrotasks();
+      expect(joined).toBe(false);
+      expect(stopAccount).toHaveBeenCalledOnce();
       releaseStop.resolve();
-      await expect(
-        manager.stopChannel("discord", DEFAULT_ACCOUNT_ID, { manual: false, strict: true }),
-      ).resolves.toBeUndefined();
-      expect(stopAccount).toHaveBeenCalledTimes(2);
+      await expect(joinedStop).resolves.toBeUndefined();
+      expect(stopAccount).toHaveBeenCalledOnce();
       await manager.startChannel("discord", DEFAULT_ACCOUNT_ID);
       await flushMicrotasks();
       expect(startAccount).toHaveBeenCalledOnce();
     } finally {
       releasePreparation.resolve();
       releaseStop.resolve();
-      await Promise.allSettled([starting, stopped]);
+      await Promise.allSettled([starting, stopped, joinedStop]);
     }
   });
 
@@ -2409,7 +2413,10 @@ describe("server-channels auto restart", () => {
       try {
         await manager.startChannel("discord", DEFAULT_ACCOUNT_ID);
         expect(await readIngress()).toEqual({ status: 200, body: "abandoned" });
-        const stopping = manager.stopChannel("discord", DEFAULT_ACCOUNT_ID, { manual: false });
+        const stopping = manager.stopChannel("discord", DEFAULT_ACCOUNT_ID, {
+          manual: false,
+          routeHandoff: abandonedHook === "stop",
+        });
         await abandonedStarted.promise;
         await flushMicrotasks();
         await vi.advanceTimersByTimeAsync(5_000);
@@ -3213,6 +3220,7 @@ describe("server-channels auto restart", () => {
     let observerCount: number | undefined;
     const startAccount = vi.fn(async (ctx: ChannelGatewayContext<TestAccount>) => {
       observerCount = getEventListeners(ctx.abortSignal, "abort").length;
+      const stopped = waitForAbort(ctx.abortSignal);
       const approvalRuntime =
         ctx.channelRuntime?.runtimeContexts.get<ApprovalGatewayRequestRuntime>({
           channelId: "discord",
@@ -3227,7 +3235,7 @@ describe("server-channels auto restart", () => {
       await expect(approvalRuntime?.request("config.get" as never, {})).rejects.toThrow(
         "channel approval runtime cannot dispatch config.get",
       );
-      await waitForAbort(ctx.abortSignal);
+      await stopped;
     });
     installTestRegistry(createTestPlugin({ startAccount }));
     const manager = createManager({
@@ -3242,12 +3250,19 @@ describe("server-channels auto restart", () => {
     releaseAccountStart();
     await flushMicrotasks();
 
-    expect(observerCount).toBe(1); // Approval disposal owns the remaining listener.
+    // Scheduler retirement and approval disposal remain; the deferred-start waiter is gone.
+    expect(observerCount).toBe(2);
     expect(request).toHaveBeenCalledWith(
       "approval.resolve",
       { id: "approval-1", kind: "exec", decision: "deny" },
       { clientDisplayName: "Discord approval" },
     );
+    const context = startAccount.mock.calls[0]?.[0];
+    if (!context) {
+      throw new Error("Expected the approval account to start");
+    }
+    await manager.stopChannel("discord", DEFAULT_ACCOUNT_ID);
+    expect(getEventListeners(context.abortSignal, "abort")).toHaveLength(0);
   });
 
   it("keeps auto-restart running when scoped runtime cleanup throws", async () => {

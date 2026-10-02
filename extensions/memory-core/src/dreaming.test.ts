@@ -16,7 +16,10 @@ import {
   resolveMemoryDeepDreamingConfig,
 } from "openclaw/plugin-sdk/memory-core-host-status";
 import type { OpenClawPluginServiceContext } from "openclaw/plugin-sdk/plugin-entry";
-import { createTestPluginApi } from "openclaw/plugin-sdk/plugin-test-api";
+import {
+  createTestPluginApi,
+  createTestPluginServiceScheduler,
+} from "openclaw/plugin-sdk/plugin-test-api";
 import { enqueueSystemEvent } from "openclaw/plugin-sdk/system-event-runtime";
 import { resetSystemEventsForTest } from "openclaw/plugin-sdk/test-fixtures";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -102,6 +105,7 @@ type CronHarnessOptions = {
 };
 type DreamingPluginApi = Parameters<typeof registerShortTermPromotionDreaming>[0];
 type DreamingPluginApiTestDouble = DreamingPluginApi & {
+  scheduler: ReturnType<typeof createTestPluginServiceScheduler>;
   logger: ReturnType<typeof createLogger>;
   on: ReturnType<typeof vi.fn>;
   registerService: ReturnType<typeof vi.fn<DreamingPluginApi["registerService"]>>;
@@ -243,6 +247,7 @@ function createDreamingTestContext(
     }),
     logger,
     on: onMock,
+    scheduler: createTestPluginServiceScheduler(),
     registerService: vi.fn<DreamingPluginApi["registerService"]>(),
   };
   Object.assign(api.runtime, params.runtime);
@@ -318,19 +323,26 @@ async function triggerDreamingServiceStart(
   api: DreamingPluginApiTestDouble,
   ctx: { config: OpenClawConfig; workspaceDir?: string; getCron?: () => unknown },
 ): Promise<void> {
-  await getDreamingService(api).start({
+  const context = {
     ...ctx,
     stateDir: ".",
     logger: api.logger,
-  } as OpenClawPluginServiceContext);
+  } as OpenClawPluginServiceContext;
+  await getDreamingService(api).start({ ...context, scheduler: api.scheduler });
 }
 
 async function triggerDreamingServiceStop(api: DreamingPluginApiTestDouble): Promise<void> {
-  await getDreamingService(api).stop?.({
-    config: api.config,
-    stateDir: ".",
-    logger: api.logger,
-  });
+  api.scheduler.beginClose();
+  try {
+    await getDreamingService(api).stop?.({
+      config: api.config,
+      stateDir: ".",
+      logger: api.logger,
+      scheduler: api.scheduler,
+    });
+  } finally {
+    await api.scheduler.stop();
+  }
 }
 
 function registerShortTermPromotionDreamingForTest(api: DreamingPluginApiTestDouble): void {

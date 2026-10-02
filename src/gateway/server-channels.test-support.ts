@@ -47,7 +47,7 @@ export function createTestPlugin(params?: {
   disabledReason?: ChannelPlugin<TestAccount>["config"]["disabledReason"];
   unconfiguredReason?: ChannelPlugin<TestAccount>["config"]["unconfiguredReason"];
   unlinkedReason?: ChannelPlugin<TestAccount>["config"]["unlinkedReason"];
-}): ChannelPlugin<TestAccount> {
+}): ChannelPlugin<TestAccount, unknown, unknown, 2> {
   const id = params?.id ?? "discord";
   const account = params?.account ?? { enabled: true, configured: true };
   const includeDescribeAccount = params?.includeDescribeAccount !== false;
@@ -107,9 +107,9 @@ export async function flushMicrotasks(times = 8): Promise<void> {
 
 export function createTestChannelRegistry(
   ...plugins: Array<
-    | ChannelPlugin<TestAccount>
+    | ChannelPlugin<TestAccount, unknown, unknown, 1 | 2>
     | {
-        plugin: ChannelPlugin<TestAccount>;
+        plugin: ChannelPlugin<TestAccount, unknown, unknown, 1 | 2>;
         origin: string;
         resolveChannelRuntime?: () => PluginRuntime["channel"];
       }

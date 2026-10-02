@@ -69,6 +69,12 @@ optional scheduler field and continue to work unchanged. The host supplies the
 same capability to both versions and joins scheduled work before retiring an
 account. Bundled plugin timer migrations can adopt it independently.
 
+`ChannelPlugin<Account, Probe, Audit>` and `createChatChannelPlugin` default to
+the version 1 Gateway adapter, preserving existing declarations and manual calls.
+Use `ChannelPlugin<Account, Probe, Audit, 2>` or the fourth `createChatChannelPlugin`
+type argument for a version 2 adapter. Inline `api.registerChannel` registrations
+infer the callback context from the adapter's `apiVersion`.
+
 Published factories whose older parameter contracts did not accept a scheduler
 use `resolvePluginServiceScheduler` from `openclaw/plugin-sdk/runtime` in their
 version 1 adapter, then delegate to their version 2 implementation. The resolver

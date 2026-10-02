@@ -16,11 +16,8 @@ import {
   listLoadedChannelPluginsForRegistry,
 } from "../channels/plugins/registry-loaded.js";
 import type { ChannelGatewayContextV2 } from "../channels/plugins/types.adapters.js";
-import type {
-  ChannelAccountSnapshot,
-  ChannelId,
-  ChannelPlugin,
-} from "../channels/plugins/types.public.js";
+import type { AnyChannelPlugin as ChannelPlugin } from "../channels/plugins/types.plugin.js";
+import type { ChannelAccountSnapshot, ChannelId } from "../channels/plugins/types.public.js";
 import {
   applyChannelAccountState,
   resolveChannelAccountState,
@@ -943,14 +940,18 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
           });
           // Recovery can replace a timed-out task before the old promise settles.
           // Only the task that still owns the store slot may write lifecycle state.
-          const trackedPromise = task
-            .finally(async () => {
+          const settledTask = async () => {
+            try {
+              await task;
+            } finally {
               try {
                 await scheduler.stop();
               } finally {
                 capabilityLease.revoke();
               }
-            })
+            }
+          };
+          const trackedPromise = settledTask()
             .then(() => {
               if (
                 abort.signal.aborted ||
@@ -1249,8 +1250,10 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
               // stop-driven flow (health monitor sweeps, thaw recovery, reload).
               // Ordinary recovery retains the timed-out owner; explicit handoff
               // retires its slots after revoking OpenClaw runtime authority.
+              const retainedCleanup = store.stops.get(id)?.cleanup;
+              let stopAccountStarted = retainedCleanup !== undefined;
               const stopAccountAttempt =
-                store.stops.get(id)?.cleanup ??
+                retainedCleanup ??
                 runChannelAccountStop({
                   registry,
                   rootScheduler: opts.scheduler,
@@ -1273,6 +1276,9 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
                     stopLease.isActive()
                       ? setRuntime(channelId, id, next)
                       : getRuntime(channelId, id),
+                  onCleanupStarted: () => {
+                    stopAccountStarted = true;
+                  },
                   onError: (error) =>
                     log.warn?.(`[${id}] stopAccount failed: ${formatErrorMessage(error)}`),
                 });
@@ -1282,8 +1288,8 @@ export function createChannelManager(opts: ChannelManagerOptions): ChannelManage
               );
               const stopState = store.stops.get(id);
               if (!stopAccountSettled) {
-                // A later stop observes this physical cleanup instead of invoking the hook again.
-                if (stopState) {
+                // Retain physical teardown; an expired account lookup admitted no cleanup.
+                if (stopState && stopAccountStarted) {
                   stopState.cleanup = stopAccountAttempt;
                 }
                 log.warn?.(

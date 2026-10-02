@@ -98,7 +98,7 @@ function matchesReefToolTarget(target: string, toolContext?: ChannelThreadingToo
   return normalizedCurrent !== undefined && normalizeReefTarget(target) === normalizedCurrent;
 }
 
-export const reefPlugin: ChannelPlugin<ReefAccount> = {
+export const reefPlugin: ChannelPlugin<ReefAccount, unknown, unknown, 2> = {
   id: "reef",
   meta: {
     id: "reef",

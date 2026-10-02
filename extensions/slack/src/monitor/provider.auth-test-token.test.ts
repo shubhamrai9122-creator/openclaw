@@ -5,7 +5,11 @@ import {
   createPluginStateKeyedStoreForTests,
   openOpenClawStateDatabase,
 } from "openclaw/plugin-sdk/plugin-state-test-runtime";
-import { createTestPluginServiceScheduler } from "openclaw/plugin-sdk/plugin-test-api";
+import {
+  createGatewaySchedulerClock,
+  createTestGatewayScheduler,
+  createTestPluginServiceScheduler,
+} from "openclaw/plugin-sdk/plugin-test-api";
 import {
   createTestRegistry,
   resetPluginRuntimeStateForTest,
@@ -266,21 +270,10 @@ describe("presence polling transport", () => {
     const { replyMock, sendMock } = getSlackTestState();
     replyMock.mockResolvedValue({ text: "ok" });
 
-    const nativeSetInterval = globalThis.setInterval;
-    let triggerPresencePoll: (() => void) | undefined;
-    const intervalSpy = vi.spyOn(globalThis, "setInterval").mockImplementation(((
-      handler: (...args: unknown[]) => void,
-      timeout?: number,
-      ...args: unknown[]
-    ) => {
-      if (timeout === 60_000 && !triggerPresencePoll) {
-        triggerPresencePoll = () => handler(...args);
-        return nativeSetInterval(() => undefined, 60 * 60 * 1_000);
-      }
-      return nativeSetInterval(handler, timeout, ...args);
-    }) as typeof setInterval);
-
-    const monitor = startSlackMonitor(monitorSlackProvider);
+    const clock = createGatewaySchedulerClock();
+    const scheduler = createTestPluginServiceScheduler(createTestGatewayScheduler(clock.clock));
+    const monitor = startSlackMonitor((options) => monitorSlackProvider({ ...options, scheduler }));
+    let deadline: ReturnType<typeof setTimeout> | undefined;
     try {
       const handler = await getSlackHandlerOrThrow("message");
       await runSlackHandlerWithDispatch(handler, {
@@ -304,8 +297,8 @@ describe("presence polling transport", () => {
         WasMentioned: false,
       });
       expect(sendMock).toHaveBeenCalledWith("channel:D_STALLED", "ok", expect.any(Object));
-      expect(triggerPresencePoll).toBeTypeOf("function");
-      triggerPresencePoll?.();
+      expect(clock.armedAtMs).toBe(60_000);
+      void clock.wake();
       await vi.waitFor(() => expect(server.requestCount).toBe(1), { timeout: 1_000 });
 
       const startedAt = Date.now();
@@ -313,7 +306,7 @@ describe("presence polling transport", () => {
       const outcome = await Promise.race([
         monitor.run.then(() => "settled" as const),
         new Promise<"timed-out">((resolve) => {
-          setTimeout(() => resolve("timed-out"), 2_000);
+          deadline = setTimeout(() => resolve("timed-out"), 2_000);
         }),
       ]);
 
@@ -321,11 +314,15 @@ describe("presence polling transport", () => {
       expect(Date.now() - startedAt).toBeLessThan(2_000);
       await vi.waitFor(() => expect(events).toContain("socket-closed"), { timeout: 1_000 });
       expect(server.requestUrl).toBe("/api/users.getPresence");
+      expect(clock.armedAtMs).toBeNull();
+      await clock.advanceBy(60_000);
+      expect(server.requestCount).toBe(1);
     } finally {
-      intervalSpy.mockRestore();
+      clearTimeout(deadline);
       monitor.controller.abort();
       await server.close();
       await monitor.run;
+      await scheduler.stop();
     }
   });
 });

@@ -143,11 +143,13 @@ it.each(["cold start", "hot enable"] as const)(
       activatePluginRegistry(initial.pluginRegistry, null, "gateway-bindable", state.workspaceDir);
       let services: PluginServicesHandle | null = null;
       const registryOwner = createPluginRegistryOwner(initial.pluginRegistry, state.workspaceDir);
-      const metadata = retainGatewayPluginMetadata(createTestGatewayScheduler());
+      const scheduler = createTestGatewayScheduler();
+      const metadata = retainGatewayPluginMetadata(scheduler);
       metadata.publish(initialMetadata);
       const loaded = [initial];
       const lifetime = createGatewaySidecarStopOwner();
       const runtime = {
+        scheduler,
         requestEntryLifetime: new GatewayRequestEntryLifetime(),
         pluginMetadataSnapshot: initialMetadata,
         pluginRuntime: registryOwner,
@@ -201,6 +203,7 @@ it.each(["cold start", "hot enable"] as const)(
           }),
         );
         services = await startPluginServices({
+          scheduler,
           registry: initial.pluginRegistry,
           config,
           workspaceDir: state.workspaceDir,
@@ -338,6 +341,7 @@ it.each(["cold start", "hot enable"] as const)(
         loaded.forEach((entry) => entry.retireGatewayRuntimeBindings());
         await registryOwner.close();
         await metadata.close();
+        await scheduler.stop();
         vi.unstubAllEnvs();
         vi.unstubAllGlobals();
       }

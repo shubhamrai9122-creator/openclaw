@@ -45,11 +45,13 @@ type ChannelGatewayMethodDescriptor = {
 /** Full capability contract for a native channel plugin. */
 // Omitted generic means "plugin with some account shape"; using unknown makes
 // callback parameters contravariant and rejects concrete plugin implementations.
-// oxlint-disable-next-line typescript/no-explicit-any
-export type ChannelPlugin<ResolvedAccount = any, Probe = unknown, Audit = unknown> = Omit<
-  ChannelSetupPlugin,
-  "config"
-> & {
+export type ChannelPlugin<
+  // oxlint-disable-next-line typescript/no-explicit-any
+  ResolvedAccount = any,
+  Probe = unknown,
+  Audit = unknown,
+  GatewayVersion extends 1 | 2 = 1,
+> = Omit<ChannelSetupPlugin, "config"> & {
   defaults?: {
     queue?: {
       debounceMs?: number;
@@ -77,7 +79,9 @@ export type ChannelPlugin<ResolvedAccount = any, Probe = unknown, Audit = unknow
   status?: ChannelStatusAdapter<ResolvedAccount, Probe, Audit>;
   gatewayMethods?: string[];
   gatewayMethodDescriptors?: ChannelGatewayMethodDescriptor[];
-  gateway?: ChannelGatewayAdapter<ResolvedAccount> | ChannelGatewayAdapterV2<ResolvedAccount>;
+  gateway?: GatewayVersion extends 2
+    ? ChannelGatewayAdapterV2<ResolvedAccount>
+    : ChannelGatewayAdapter<ResolvedAccount>;
   // Login/logout and channel-auth only. Approval auth lives on approvalCapability.
   auth?: ChannelAuthAdapter;
   approvalCapability?: ChannelApprovalCapability;
@@ -101,3 +105,7 @@ export type ChannelPlugin<ResolvedAccount = any, Probe = unknown, Audit = unknow
   // Channel-owned agent tools (login flows, etc.).
   agentTools?: ChannelAgentToolFactory | ChannelAgentTool[];
 };
+
+/** Heterogeneous registries erase each plugin's account/probe/audit family, retaining its adapter version. */
+// oxlint-disable-next-line typescript/no-explicit-any
+export type AnyChannelPlugin = ChannelPlugin<any, any, any, 1 | 2>;

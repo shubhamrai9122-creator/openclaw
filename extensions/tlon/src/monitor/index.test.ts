@@ -925,6 +925,5 @@ describe("monitorTlonProvider shutdown", () => {
       expect(ingressMock.stop).toHaveBeenCalledOnce();
     }
     expect(outcome).toBe("settled");
-    pollIntervalSpy.mockRestore();
   });
 });

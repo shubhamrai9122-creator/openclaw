@@ -22,6 +22,7 @@ import type { OpenClawPluginNodeWorkspace } from "./types.node-host.js";
 export type { PluginServiceSchedulerV1 } from "./service-scheduler.types.js";
 
 type ChannelPlugin = import("../channels/plugins/types.plugin.js").ChannelPlugin;
+type AnyChannelPlugin = import("../channels/plugins/types.plugin.js").AnyChannelPlugin;
 type DiagnosticTracePropagationBridge = DiagnosticTracePropagationBridgeContract<
   DiagnosticEventPayload,
   DiagnosticEventMetadata
@@ -449,8 +450,8 @@ export type OpenClawPluginServiceV2 = Omit<
   stop?: (ctx: OpenClawPluginServiceContextV2) => void | Promise<void>;
 };
 
-export type OpenClawPluginChannelRegistration = {
-  plugin: ChannelPlugin;
+export type OpenClawPluginChannelRegistration<Plugin extends AnyChannelPlugin = ChannelPlugin> = {
+  plugin: Plugin;
 };
 
 /**

@@ -1,11 +1,10 @@
 import { EventEmitter } from "node:events";
 import fs from "node:fs/promises";
 import { PassThrough } from "node:stream";
-import type { ChannelPlugin } from "openclaw/plugin-sdk/channel-core";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk/channel-entry-contract";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
 import { createDeferred } from "openclaw/plugin-sdk/extension-shared";
-import { createTestPluginServiceScheduler } from "openclaw/plugin-sdk/plugin-test-api";
+import type { PluginServiceSchedulerV1 } from "openclaw/plugin-sdk/plugin-entry";
 import { createPluginRuntimeStore, type PluginRuntime } from "openclaw/plugin-sdk/runtime-store";
 import { discordPlugin } from "../../channel-plugin-api.js";
 import { registerDiscordTranscriptSourceProvider } from "../../transcripts-source-api.js";
@@ -34,6 +33,7 @@ export const lateText = "Synthetic late STT must not enter the stopped capture."
 /** Owns only external Discord/codec/STT edges; no routing, authorization or dispatch mocks. */
 export function createDiscordGatewayCaptureFixture(params: {
   cfg: OpenClawConfig;
+  scheduler: PluginServiceSchedulerV1;
   test: { expect: typeof import("vitest").expect; vi: typeof import("vitest").vi };
 }) {
   const { expect, vi: testVi } = params.test;
@@ -188,7 +188,7 @@ export function createDiscordGatewayCaptureFixture(params: {
   }
   const createManager = (cfg: OpenClawConfig) => {
     const createdManager = new DiscordVoiceManager({
-      scheduler: createTestPluginServiceScheduler(),
+      scheduler: params.scheduler,
       client,
       cfg,
       discordConfig: cfg.channels!.discord!.accounts![captureTarget.accountId]!,
@@ -294,8 +294,7 @@ export function createDiscordGatewayCaptureFixture(params: {
   return {
     register(api: OpenClawPluginApi) {
       runtimeStore.setRuntime(api.runtime);
-      // Same probe-type erasure used by defineBundledChannelEntry at registration.
-      api.registerChannel({ plugin: discordPlugin as ChannelPlugin });
+      api.registerChannel({ plugin: discordPlugin });
       registerDiscordTranscriptSourceProvider(api);
     },
     bindPublishedRuntime() {

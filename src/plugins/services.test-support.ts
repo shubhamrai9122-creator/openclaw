@@ -9,7 +9,6 @@ import type { PluginOrigin } from "./plugin-origin.types.js";
 import type { PluginServiceRegistration } from "./registry-types.js";
 import { createEmptyPluginRegistry } from "./registry.js";
 import { startPluginServices as start } from "./services.js";
-import type { OpenClawPluginService } from "./types.js";
 
 export type { PluginServicesHandle } from "./services.js";
 
@@ -28,7 +27,7 @@ export function startPluginServices(
 }
 
 export function createServiceRegistration(
-  service: OpenClawPluginService,
+  service: PluginServiceRegistration["service"],
   owner: Partial<Omit<PluginServiceRegistration, "id" | "service">> = {},
 ): PluginServiceRegistration {
   return {
@@ -42,7 +41,7 @@ export function createServiceRegistration(
 }
 
 export function createRegistry(
-  services: OpenClawPluginService[],
+  services: PluginServiceRegistration["service"][],
   pluginId = "plugin:test",
   origin: PluginOrigin = "workspace",
 ) {

@@ -1,6 +1,6 @@
 import { resolveChannelAccount } from "../channels/account-resolution.js";
 import type { ChannelGatewayContextV2 } from "../channels/plugins/types.adapters.js";
-import type { ChannelPlugin } from "../channels/plugins/types.public.js";
+import type { AnyChannelPlugin as ChannelPlugin } from "../channels/plugins/types.plugin.js";
 import type { OpenClawConfig } from "../config/types.openclaw.js";
 import type { GatewayScheduler } from "../infra/gateway-scheduler.js";
 import {
@@ -68,6 +68,7 @@ export async function runChannelAccountStop(params: {
     scheduler: PluginServiceSchedulerV1,
   ) => Omit<ChannelGatewayContextV2, "setStatus">;
   setStatus: ChannelGatewayContextV2["setStatus"];
+  onCleanupStarted: () => void;
   onError: (error: unknown) => void;
 }): Promise<ChannelAccountStopOutcome> {
   try {
@@ -93,15 +94,20 @@ export async function runChannelAccountStop(params: {
           return;
         }
         const { context, run } = teardown;
-        params.lease.assertActive("account cleanup");
         // The owner cancels transport and flushes admitted delivery before its work can join.
-        const cleanup = Promise.resolve().then(() =>
-          withPluginServiceScheduler(context.scheduler, () =>
+        const cleanup = Promise.resolve().then(() => {
+          params.lease.assertActive("account cleanup");
+          params.onCleanupStarted();
+          return withPluginServiceScheduler(context.scheduler, () =>
             run({ ...context, setStatus: params.setStatus }),
-          ),
-        );
+          );
+        });
         const scheduled = context.scheduler.stop();
-        await cleanup.finally(() => scheduled);
+        try {
+          await cleanup;
+        } finally {
+          await scheduled;
+        }
       },
       params.lease,
     );

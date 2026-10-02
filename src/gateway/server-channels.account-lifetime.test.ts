@@ -30,8 +30,8 @@ describe("channel account scheduling lifetime", () => {
 
   it("retains account capabilities until admitted scheduled I/O settles", async () => {
     const clock = createGatewaySchedulerClock();
-    const io = createDeferred<void>();
-    const entered = createDeferred<void>();
+    const io = createDeferred();
+    const entered = createDeferred();
     let committed = false;
     let account: ChannelGatewayContextV2<TestAccount> | undefined;
     const registerRoute = (path: string) =>
@@ -99,8 +99,8 @@ describe("channel account scheduling lifetime", () => {
     signal,
   }) => {
     const clock = createGatewaySchedulerClock();
-    const siblingRearmed = createDeferred<void>();
-    const work = createDeferred<void>();
+    const siblingRearmed = createDeferred();
+    const work = createDeferred();
     const contexts = new Map<string, ChannelGatewayContextV2<TestAccount>>();
     const ran = vi.fn<(accountId: string) => void>();
     const stopAccount = vi.fn(async () => {});
@@ -178,8 +178,8 @@ describe("channel account scheduling lifetime", () => {
   });
 
   it.each([true, false])("retains timed-out ordinary cleanup with manual=%s", async (manual) => {
-    const entered = createDeferred<void>();
-    const release = createDeferred<void>();
+    const entered = createDeferred();
+    const release = createDeferred();
     const startAccount = vi.fn(({ abortSignal }: ChannelGatewayContextV2<TestAccount>) =>
       waitForAbort(abortSignal),
     );

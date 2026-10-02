@@ -1176,7 +1176,7 @@ describe("VoiceCallWebhookServer classic response routing", () => {
   function responseFixture(
     call: CallRecord,
     config = createConfig({ agentId: "main" }),
-    logger?: ConstructorParameters<typeof VoiceCallWebhookServer>[6],
+    logger?: WebhookServerArgs[6],
   ) {
     const speak = vi.fn(async () => ({ success: true }));
     const manager = {

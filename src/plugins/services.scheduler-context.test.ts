@@ -136,7 +136,7 @@ it("owns service callbacks after startup and reload callers finish", async () =>
 it("keeps standalone scheduled services free of an unbound Gateway resolver", async () => {
   const registry = createEmptyPluginRegistry();
   const clock = createGatewaySchedulerClock();
-  const scheduler = createTestGatewayScheduler(clock.clock);
+  const gatewayScheduler = createTestGatewayScheduler(clock.clock);
   let opened = false;
   registry.services.push({
     id: "standalone",
@@ -159,13 +159,13 @@ it("keeps standalone scheduled services free of an unbound Gateway resolver", as
       },
     },
   });
-  const services = await startPluginServices({ registry, config: {}, scheduler });
+  const services = await startPluginServices({ registry, config: {}, scheduler: gatewayScheduler });
   try {
     await clock.advanceBy(1);
     expect(opened).toBe(true);
   } finally {
     await services.stop();
-    await scheduler.stop();
+    await gatewayScheduler.stop();
   }
 });
 
@@ -175,7 +175,7 @@ it("settles scheduled callbacks before the disposal that stops their service", a
   registry.plugins.push(record);
   const instance = new PluginInstance(record.id, { record, registry });
   const clock = createGatewaySchedulerClock();
-  const scheduler = createTestGatewayScheduler(clock.clock);
+  const gatewayScheduler = createTestGatewayScheduler(clock.clock);
   const entered = createDeferredCore();
   const release = createDeferredCore();
   const events: string[] = [];
@@ -206,7 +206,7 @@ it("settles scheduled callbacks before the disposal that stops their service", a
       },
     },
   });
-  const services = await startPluginServices({ registry, config: {}, scheduler });
+  const services = await startPluginServices({ registry, config: {}, scheduler: gatewayScheduler });
   const tick = clock.advanceBy(1);
   await entered.promise;
   const disposal = instance.dispose(async () => {
@@ -220,6 +220,6 @@ it("settles scheduled callbacks before the disposal that stops their service", a
     expect(events).toEqual(["callback", "stopped", "disposed"]);
   } finally {
     release.resolve();
-    await Promise.allSettled([tick, disposal, services.stop(), scheduler.stop()]);
+    await Promise.allSettled([tick, disposal, services.stop(), gatewayScheduler.stop()]);
   }
 });

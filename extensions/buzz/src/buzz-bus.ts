@@ -350,8 +350,8 @@ export async function startBuzzBus(options: {
       await relay.send(JSON.stringify(["EVENT", event]));
     },
     close: async () => {
-      presenceScheduler.beginClose();
       lifecycleAbort.abort(new Error("Buzz bus closed"));
+      presenceScheduler.beginClose();
       // Abort this generation's agent turns before draining stale work.
       await dispatchQueue.close();
       directoryRelay?.close();

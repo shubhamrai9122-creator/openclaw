@@ -816,7 +816,7 @@ describe("voice-call plugin", () => {
   });
 
   it("legacy tool status without sid returns error payload", async () => {
-    const { tools } = setup({ provider: "mock" });
+    const { tools } = await setupActive({ provider: "mock" });
     const tool = tools[0] as {
       execute: (id: string, params: unknown) => Promise<unknown>;
     };
@@ -898,18 +898,6 @@ describe("voice-call plugin", () => {
       stdout.restore();
       fs.unlinkSync(tmpFile);
     }
-  });
-
-  it("CLI start prints JSON", async () => {
-    const output = await runVoiceCallCli([
-      "voicecall",
-      "start",
-      "--to",
-      "+1",
-      "--message",
-      "Hello",
-    ]);
-    expect(output).toContain('"callId": "call-1"');
   });
 
   it("CLI start delegates to the running gateway runtime", async () => {
@@ -1157,23 +1145,6 @@ describe("voice-call plugin", () => {
     });
     expect(output).toContain("live-call: dry run for +15550009999");
     expect(runtimeStub.manager["initiateCall"]).not.toHaveBeenCalled();
-  });
-
-  it("CLI smoke can place a live notify call with --yes", async () => {
-    const output = await runVoiceCallCli(["voicecall", "smoke", "--to", "+15550009999", "--yes"], {
-      provider: "twilio",
-      fromNumber: "+15550001234",
-      publicUrl: "https://voice.example.com/voice/webhook",
-      twilio: {
-        accountSid: "AC123",
-        authToken: "token",
-      },
-    });
-    expect(runtimeStub.manager["initiateCall"]).toHaveBeenCalledWith("+15550009999", undefined, {
-      message: "OpenClaw voice call smoke test.",
-      mode: "notify",
-    });
-    expect(output).toContain("live-call: started call-1");
   });
 });
 /* oxlint-disable max-lines -- TODO: split this grandfathered oversized file. */

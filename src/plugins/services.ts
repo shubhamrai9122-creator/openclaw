@@ -281,9 +281,13 @@ async function startPreparedPluginServices({
         // The scheduler records callback failures; its join only observes physical settlement.
         // An idle scope must preserve the hook's raw result for zero-budget deadlines.
         return scheduled
-          ? Promise.resolve()
-              .then(cleanup)
-              .finally(() => scheduled)
+          ? Promise.resolve().then(async () => {
+              try {
+                return await cleanup();
+              } finally {
+                await scheduled;
+              }
+            })
           : cleanup();
       };
       const cleanup = () => {

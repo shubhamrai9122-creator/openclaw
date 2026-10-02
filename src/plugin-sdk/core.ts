@@ -568,13 +568,13 @@ export function defineSetupPluginEntry<TPlugin>(plugin: TPlugin) {
   return { plugin };
 }
 
-type ChatChannelPluginBase<TResolvedAccount, Probe, Audit> = Omit<
-  ChannelPlugin<TResolvedAccount, Probe, Audit>,
+type ChatChannelPluginBase<TResolvedAccount, Probe, Audit, GatewayVersion extends 1 | 2> = Omit<
+  ChannelPlugin<TResolvedAccount, Probe, Audit, GatewayVersion>,
   "capabilities" | "security" | "pairing" | "threading" | "outbound"
 > &
   Partial<
     Pick<
-      ChannelPlugin<TResolvedAccount, Probe, Audit>,
+      ChannelPlugin<TResolvedAccount, Probe, Audit, GatewayVersion>,
       "capabilities" | "security" | "pairing" | "threading" | "outbound"
     >
   >;
@@ -715,15 +715,16 @@ export function createChatChannelPlugin<
   TResolvedAccount extends { accountId?: string | null },
   Probe = unknown,
   Audit = unknown,
+  GatewayVersion extends 1 | 2 = 1,
 >(params: {
-  base: ChatChannelPluginBase<TResolvedAccount, Probe, Audit>;
+  base: ChatChannelPluginBase<TResolvedAccount, Probe, Audit, GatewayVersion>;
   security?:
     | ChannelSecurityAdapter<TResolvedAccount>
     | ChatChannelSecurityOptions<TResolvedAccount>;
   pairing?: ChannelPairingAdapter | ChatChannelPairingOptions;
   threading?: ChannelThreadingAdapter | ChatChannelThreadingOptions<TResolvedAccount>;
   outbound?: ChannelOutboundAdapter | ChatChannelAttachedOutboundOptions;
-}): ChannelPlugin<TResolvedAccount, Probe, Audit> {
+}): ChannelPlugin<TResolvedAccount, Probe, Audit, GatewayVersion> {
   return {
     ...params.base,
     capabilities: params.base.capabilities ?? { chatTypes: ["direct"] },
@@ -735,7 +736,7 @@ export function createChatChannelPlugin<
     ...(params.pairing ? { pairing: resolveChatChannelPairing(params.pairing) } : {}),
     ...(params.threading ? { threading: resolveChatChannelThreading(params.threading) } : {}),
     ...(params.outbound ? { outbound: resolveChatChannelOutbound(params.outbound) } : {}),
-  } as ChannelPlugin<TResolvedAccount, Probe, Audit>;
+  };
 }
 
 /** Create the shared base object for channel plugins that override only selected surfaces. */

@@ -119,7 +119,7 @@ it.for([false, true])(
   "retains a tracked child after a strict stop deadline, synchronous hook failure=%s",
   async (failStop, { signal }) => {
     const clock = createGatewaySchedulerClock();
-    const scheduler = createTestGatewayScheduler(clock.clock);
+    const gatewayScheduler = createTestGatewayScheduler(clock.clock);
     const entered = createDeferredCore();
     const release = createDeferredCore();
     const failure = new Error("synchronous stop failed");
@@ -155,7 +155,11 @@ it.for([false, true])(
         },
       },
     });
-    const services = await startPluginServices({ registry, config: {}, scheduler });
+    const services = await startPluginServices({
+      registry,
+      config: {},
+      scheduler: gatewayScheduler,
+    });
     const ticking = clock.advanceBy(1);
     try {
       await withinTest(entered.promise, signal);
@@ -181,7 +185,7 @@ it.for([false, true])(
       expect(stopCalls).toBe(1);
     } finally {
       release.resolve();
-      await Promise.allSettled([ticking, services.stop(), scheduler.stop()]);
+      await Promise.allSettled([ticking, services.stop(), gatewayScheduler.stop()]);
     }
   },
 );
