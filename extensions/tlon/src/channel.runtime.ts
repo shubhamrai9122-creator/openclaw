@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
-import type { ChannelGatewayContextV2 } from "openclaw/plugin-sdk/channel-contract";
 import type {
   ChannelAccountSnapshot,
+  ChannelGatewayContextV2,
   ChannelOutboundContext,
 } from "openclaw/plugin-sdk/channel-contract";
 import type { ChannelOutboundAdapter } from "openclaw/plugin-sdk/channel-send-result";

@@ -201,7 +201,7 @@ describe("discord auto presence", () => {
     ]);
   });
 
-  it("does nothing when auto presence is disabled", () => {
+  it("does nothing when auto presence is disabled", async () => {
     const updatePresence = vi.fn();
     const controller = createController({
       accountId: "default",
@@ -219,7 +219,7 @@ describe("discord auto presence", () => {
 
     controller.start();
     controller.refresh();
-    controller.stop();
+    await controller.stop();
 
     expect(controller.enabled).toBe(false);
     expect(updatePresence).not.toHaveBeenCalled();

@@ -78,7 +78,7 @@ export class ImapAccountWatcher {
 
   private startConnection(): Promise<void> | undefined {
     if (this.scheduler.signal.aborted || this.activeConnection) {
-      return;
+      return undefined;
     }
     const pending = this.connect().catch((error: unknown) => this.handleConnectionFailure(error));
     this.activeConnection = pending.finally(() => {

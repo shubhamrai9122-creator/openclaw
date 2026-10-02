@@ -144,11 +144,10 @@ describe("voice-call doctor state migration", () => {
           plugins: {
             entries: {
               "voice-call": {
-                config: {
-                  ...(location === "default"
+                config:
+                  location === "default"
                     ? {}
-                    : { store: location === "tilde" ? "~/dollar-store" : store }),
-                },
+                    : { store: location === "tilde" ? "~/dollar-store" : store },
               },
             },
           },

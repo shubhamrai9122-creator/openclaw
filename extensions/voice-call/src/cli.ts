@@ -130,7 +130,7 @@ async function runWithStandaloneRuntime(
   run: (ensureRuntime: () => Promise<VoiceCallRuntime>) => Promise<void>,
 ): Promise<void> {
   let runtime: Promise<VoiceCallRuntime> | undefined;
-  const interrupted = createDeferred<void>();
+  const interrupted = createDeferred();
   let exitSignal: "SIGINT" | "SIGTERM" | undefined;
   const interrupt = (signal: "SIGINT" | "SIGTERM") => {
     exitSignal ??= signal;
@@ -175,7 +175,7 @@ export function registerVoiceCallCli(params: {
   ensureRuntime: () => Promise<VoiceCallRuntime>;
   stateRuntime?: VoiceCallStateRuntime["state"];
 }) {
-  const { program, config, coreConfig, ensureRuntime, stateRuntime } = params;
+  const { program, config, coreConfig, ensureRuntime: createRuntime, stateRuntime } = params;
   const ensureHistoryStateRuntime = (): void => {
     if (stateRuntime) {
       setVoiceCallStateRuntime({ state: stateRuntime });
@@ -219,7 +219,7 @@ export function registerVoiceCallCli(params: {
         yes?: boolean;
         json?: boolean;
       }) =>
-        runWithStandaloneRuntime(ensureRuntime, async (ensureRuntime) => {
+        runWithStandaloneRuntime(createRuntime, async (ensureRuntime) => {
           const setup = buildSetupStatus(config, coreConfig);
           if (!setup.ok) {
             if (options.json) {
@@ -281,7 +281,7 @@ export function registerVoiceCallCli(params: {
       "conversation",
     )
     .action(async (options: { message: string; to?: string; mode?: string }) =>
-      runWithStandaloneRuntime(ensureRuntime, async (ensureRuntime) => {
+      runWithStandaloneRuntime(createRuntime, async (ensureRuntime) => {
         const callId = await initiateVoiceCall({
           ensureRuntime,
           config,
@@ -305,7 +305,7 @@ export function registerVoiceCallCli(params: {
       "conversation",
     )
     .action(async (options: { to: string; message?: string; mode?: string }) =>
-      runWithStandaloneRuntime(ensureRuntime, async (ensureRuntime) => {
+      runWithStandaloneRuntime(createRuntime, async (ensureRuntime) => {
         const callId = await initiateVoiceCall({
           ensureRuntime,
           config,
@@ -324,7 +324,7 @@ export function registerVoiceCallCli(params: {
     .requiredOption("--call-id <id>", "Call ID")
     .requiredOption("--message <text>", "Message to speak")
     .action(async (options: { callId: string; message: string }) =>
-      runWithStandaloneRuntime(ensureRuntime, async (ensureRuntime) => {
+      runWithStandaloneRuntime(createRuntime, async (ensureRuntime) => {
         const gatewayParams = { callId: options.callId, message: options.message };
         const continueTimeoutMs = resolveContinueTimeout(config);
         await runGatewayManagerCommand({
@@ -357,7 +357,7 @@ export function registerVoiceCallCli(params: {
     .requiredOption("--call-id <id>", "Call ID")
     .requiredOption("--message <text>", "Message to speak")
     .action(async (options: { callId: string; message: string }) =>
-      runWithStandaloneRuntime(ensureRuntime, async (ensureRuntime) => {
+      runWithStandaloneRuntime(createRuntime, async (ensureRuntime) => {
         await runGatewayManagerCommand({
           config,
           ensureRuntime,
@@ -378,7 +378,7 @@ export function registerVoiceCallCli(params: {
     .requiredOption("--call-id <id>", "Call ID")
     .requiredOption("--digits <digits>", "DTMF digits")
     .action(async (options: { callId: string; digits: string }) =>
-      runWithStandaloneRuntime(ensureRuntime, async (ensureRuntime) => {
+      runWithStandaloneRuntime(createRuntime, async (ensureRuntime) => {
         await runGatewayManagerCommand({
           config,
           ensureRuntime,
@@ -398,7 +398,7 @@ export function registerVoiceCallCli(params: {
     .description("Hang up an active call")
     .requiredOption("--call-id <id>", "Call ID")
     .action(async (options: { callId: string }) =>
-      runWithStandaloneRuntime(ensureRuntime, async (ensureRuntime) => {
+      runWithStandaloneRuntime(createRuntime, async (ensureRuntime) => {
         await runGatewayManagerCommand({
           config,
           ensureRuntime,

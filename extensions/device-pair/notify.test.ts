@@ -321,7 +321,7 @@ describe("device-pair notify persistence", () => {
     const api = createApi(undefined, storage.openKeyedStore);
     let service = createNotifier(api);
 
-    await service.start();
+    service.start();
     expect(listDevicePairingMock).not.toHaveBeenCalled();
 
     await vi.advanceTimersByTimeAsync(10_000);
@@ -339,7 +339,7 @@ describe("device-pair notify persistence", () => {
     firstPoll.resolve({ pending: [], paired: [] });
     await stopping;
     service = createNotifier(createApi(undefined, storage.openKeyedStore));
-    await service.start();
+    service.start();
     await vi.advanceTimersByTimeAsync(10_000);
     expect(listDevicePairingMock).toHaveBeenCalledTimes(2);
     await vi.advanceTimersByTimeAsync(20_000);
@@ -393,7 +393,7 @@ describe("device-pair notify persistence", () => {
     listDevicePairingMock.mockResolvedValue({ pending: [firstRequest], paired: [] });
     let service = createNotifier(api);
 
-    await service.start();
+    service.start();
     await vi.advanceTimersByTimeAsync(10_000);
     await sendEntered.promise;
     expect(sendText).toHaveBeenCalledTimes(1);
@@ -408,7 +408,7 @@ describe("device-pair notify persistence", () => {
     await storage.requestStored("request-1");
     await stopping;
     service = createNotifier(createApi(sendText, storage.openKeyedStore));
-    await service.start();
+    service.start();
     await vi.advanceTimersByTimeAsync(10_000);
     expect(sendText).toHaveBeenCalledTimes(1);
 
@@ -457,7 +457,7 @@ describe("device-pair notify persistence", () => {
     });
     const service = createNotifier(api);
 
-    await service.start();
+    service.start();
     await vi.advanceTimersByTimeAsync(10_000);
     await sendEntered.promise;
     expect(sendText).toHaveBeenCalledTimes(1);
@@ -514,7 +514,7 @@ describe("device-pair notify persistence", () => {
     const service = createNotifier(api);
 
     try {
-      await service.start();
+      service.start();
       await vi.advanceTimersByTimeAsync(10_000);
       await storage.waitFor(sendEntered.promise);
       expect(sendText).toHaveBeenCalledTimes(1);
@@ -571,7 +571,7 @@ describe("device-pair notify persistence", () => {
     setPendingRequests({ requestId: "request-same-ms", ts: 1_000 });
     const service = createNotifier(api);
     try {
-      await service.start();
+      service.start();
       await vi.advanceTimersByTimeAsync(10_000);
       await storage.requestStored("request-same-ms");
 
@@ -613,7 +613,7 @@ describe("device-pair notify persistence", () => {
     const service = createNotifier(api);
 
     try {
-      await service.start();
+      service.start();
       await vi.advanceTimersByTimeAsync(10_000);
       await storage.requestStored("request-1");
 

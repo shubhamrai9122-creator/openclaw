@@ -220,12 +220,12 @@ describe("voice-call runtime lifecycle", () => {
       .mockResolvedValueOnce(runtimeA.runtime)
       .mockResolvedValueOnce(runtimeB.runtime);
     const generationA = registerVoiceCall({ config: { toNumber: "+15550000001" } });
-    generationA.service.start(serviceContext);
+    expect(generationA.service.start(serviceContext)).toBeUndefined();
     await executeCall(generationA.tool());
     const generationB = registerVoiceCall({ config: { toNumber: "+15550000002" } });
 
     const stoppingA = generationA.service.stop?.(serviceContext);
-    generationB.service.start(serviceContext);
+    expect(generationB.service.start(serviceContext)).toBeUndefined();
     const callB = executeCall(generationB.tool());
     await aStopEntered.promise;
     expect(runtimeA.stop).toHaveBeenCalledTimes(1);
@@ -247,7 +247,7 @@ describe("voice-call runtime lifecycle", () => {
     const generationA = registerVoiceCall({ config: { toNumber: "+15550000001" } });
     const generationB = registerVoiceCall({ config: { toNumber: "+15550000002" } });
 
-    generationB.service.start(serviceContext);
+    expect(generationB.service.start(serviceContext)).toBeUndefined();
     await executeCall(generationB.tool());
     await generationA.service.stop?.(serviceContext);
     await executeCall(generationB.tool());
@@ -265,7 +265,7 @@ describe("voice-call runtime lifecycle", () => {
       .mockResolvedValueOnce(runtimeB.runtime);
     const generationA = registerVoiceCall({ registrationMode: "full" });
     const concreteToolA = generationA.tool();
-    generationA.service.start(serviceContext);
+    expect(generationA.service.start(serviceContext)).toBeUndefined();
     await executeCall(concreteToolA);
     const coldRegistryA = registerVoiceCall({ registrationMode: "tool-discovery" });
     const coldToolA = coldRegistryA.toolFactory({});
@@ -302,7 +302,7 @@ describe("voice-call runtime lifecycle", () => {
     const retainedToolA = stagedA.tool();
     const generationB = registerVoiceCall({ registrationMode: "full" });
 
-    generationB.service.start(serviceContext);
+    expect(generationB.service.start(serviceContext)).toBeUndefined();
     await executeCall(generationB.tool());
     await generationB.service.stop?.(serviceContext);
     expectLifecycleError(await executeCall(retainedToolA), "superseded");
@@ -323,7 +323,7 @@ describe("voice-call runtime lifecycle", () => {
       .mockResolvedValueOnce(runtimeA.runtime)
       .mockResolvedValueOnce(runtimeB.runtime);
     const generationA = registerVoiceCall({});
-    generationA.service.start(serviceContext);
+    expect(generationA.service.start(serviceContext)).toBeUndefined();
     await executeCall(generationA.tool());
     const generationB = registerVoiceCall({});
 
