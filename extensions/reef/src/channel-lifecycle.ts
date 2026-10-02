@@ -1,3 +1,4 @@
+import { createDeferred } from "openclaw/plugin-sdk/concurrency-runtime";
 import type { PluginServiceSchedulerV1 } from "openclaw/plugin-sdk/plugin-entry";
 
 const REEF_RECONCILE_INTERVAL_MS = 30_000;
@@ -45,7 +46,7 @@ export async function runReefChannelLifecycle(params: {
   }
   const lifecycle = params.scheduler.scope();
   const intervalMs = params.reconcileIntervalMs ?? REEF_RECONCILE_INTERVAL_MS;
-  const reconciliationFailed = Promise.withResolvers<never>();
+  const reconciliationFailed = createDeferred<never>();
   // Declared outside the try so the finally can await it even when the startup
   // steps below throw before the inbox is started.
   let inboxTask: Promise<void> | undefined;

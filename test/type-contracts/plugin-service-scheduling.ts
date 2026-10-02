@@ -1,27 +1,27 @@
 import { expectTypeOf } from "vitest";
 import type {
-  ChannelGatewayAdapter,
   ChannelGatewayAdapterV2,
   ChannelGatewayContext,
   ChannelGatewayContextV2,
-} from "../channels/plugins/types.adapters.js";
-import type { ChannelPlugin } from "../channels/plugins/types.plugin.js";
-import type { OpenClawPluginApi } from "./plugin-api.types.js";
+} from "../../src/plugin-sdk/channel-contract.js";
+import type { ChannelPlugin } from "../../src/plugin-sdk/channel-core.js";
 import type {
-  OpenClawPluginChannelRegistration,
+  OpenClawPluginApi,
   OpenClawPluginService,
   OpenClawPluginServiceContext,
   OpenClawPluginServiceContextV2,
   OpenClawPluginServiceV2,
-} from "./plugin-registration.types.js";
-import type { PluginServiceSchedulerV1 } from "./service-scheduler.types.js";
+  PluginServiceSchedulerV1,
+} from "../../src/plugin-sdk/plugin-entry.js";
+import type { OpenClawPluginChannelRegistration } from "../../src/plugins/plugin-registration.types.js";
 
+type ChannelGatewayAdapter = NonNullable<ChannelPlugin<unknown>["gateway"]>;
 type Account = { accountId: string; token: string };
 type Probe = { online: boolean };
 type Audit = { count: number };
 
 // Compile-only coverage for published V1 calls and inferred registration callbacks.
-export async function verifyChannelRegistrationTypes(params: {
+async function verifyChannelRegistrationTypes(params: {
   api: Pick<OpenClawPluginApi, "registerChannel">;
   base: Pick<ChannelPlugin<Account>, "id" | "meta" | "capabilities" | "config">;
   legacyContext: Omit<ChannelGatewayContext<Account>, "scheduler">;
@@ -139,7 +139,7 @@ export async function verifyChannelRegistrationTypes(params: {
   });
 }
 
-export async function verifyServiceRegistrationTypes(params: {
+async function verifyServiceRegistrationTypes(params: {
   api: Pick<OpenClawPluginApi, "registerService">;
   legacyContext: Omit<OpenClawPluginServiceContext, "scheduler">;
   contextV2: OpenClawPluginServiceContextV2;
@@ -180,3 +180,6 @@ export async function verifyServiceRegistrationTypes(params: {
     },
   });
 }
+
+void verifyChannelRegistrationTypes;
+void verifyServiceRegistrationTypes;
