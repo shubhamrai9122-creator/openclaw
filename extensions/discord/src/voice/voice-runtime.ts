@@ -1,5 +1,6 @@
 import type { DiscordAccountConfig, OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
 import { createDeferred } from "openclaw/plugin-sdk/extension-shared";
+import type { PluginServiceSchedulerV1 } from "openclaw/plugin-sdk/plugin-entry";
 import { createSubsystemLogger, type RuntimeEnv } from "openclaw/plugin-sdk/runtime-env";
 import type { APIVoiceState, Client } from "../internal/discord.js";
 import { formatMention } from "../mentions.js";
@@ -89,6 +90,7 @@ export class DiscordVoiceManager implements DiscordVoiceListenerManager {
   private destroyed = false;
 
   constructor(params: {
+    scheduler: PluginServiceSchedulerV1;
     readPolicy?: DiscordLivePolicyReader;
     client: Client;
     cfg: OpenClawConfig;
@@ -143,12 +145,12 @@ export class DiscordVoiceManager implements DiscordVoiceListenerManager {
       speakerContext,
     });
     this.following = new DiscordVoiceFollowing({
+      scheduler: params.scheduler,
       allowedChannels: this.allowedChannels,
       autoJoinChannels: this.autoJoinChannels,
       botUserId: () => this.botUserId,
       client: params.client,
       deleteRecoveryAttempt: (guildId) => this.receive.daveRecoveryAttempts.delete(guildId),
-      destroyed: () => this.destroyed,
       stopTransport: (guildId) => this.voiceSessions.stopTransport(guildId),
       discordConfig: params.discordConfig,
       getRecoveryAttempt: (guildId) => this.receive.daveRecoveryAttempts.get(guildId),
@@ -602,7 +604,7 @@ export class DiscordVoiceManager implements DiscordVoiceListenerManager {
   async destroy(): Promise<void> {
     this.destroyed = true;
     this.occupancyWatchers.clear();
-    this.following.destroy();
+    const followingStopped = this.following.destroy();
     for (const entry of this.sessions.values()) {
       void entry.stop();
     }
@@ -614,7 +616,7 @@ export class DiscordVoiceManager implements DiscordVoiceListenerManager {
       });
     }
     this.receive.daveRecoveryAttempts.clear();
-    await this.voiceSessions.waitForStops();
+    await Promise.all([followingStopped, this.voiceSessions.waitForStops()]);
   }
 
   private isEntryCurrent(entry: VoiceSessionEntry): boolean {

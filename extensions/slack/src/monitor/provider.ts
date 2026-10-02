@@ -215,7 +215,8 @@ function resolveSlackRelayConfig(params: { relay: unknown; accountId: string }):
   };
 }
 
-export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
+export async function monitorSlackProvider(opts: MonitorSlackOpts) {
+  const { scheduler } = opts;
   const cfg = opts.config ?? getRuntimeConfig();
   const runtime: RuntimeEnv = opts.runtime ?? createNonExitingRuntime();
 
@@ -535,6 +536,7 @@ export async function monitorSlackProvider(opts: MonitorSlackOpts = {}) {
       installationIdentity: identity,
     });
     presenceMonitor = createSlackPresenceMonitor({
+      scheduler,
       accountId: account.accountId,
       accountConfig: slackCfg.presenceEvents,
       resolveClient: (workspaceTeamId) => resolveClient(workspaceTeamId).users,

@@ -7,6 +7,7 @@ import {
   asDateTimestampMs,
   resolveExpiresAtMsFromDurationMs,
 } from "openclaw/plugin-sdk/number-runtime";
+import type { PluginServiceSchedulerV1 } from "openclaw/plugin-sdk/plugin-entry";
 import type { PluginLogger } from "openclaw/plugin-sdk/plugin-entry";
 import { resolveConfiguredCapabilityProvider } from "openclaw/plugin-sdk/provider-selection-runtime";
 import type { TalkEvent } from "openclaw/plugin-sdk/realtime-voice";
@@ -183,7 +184,7 @@ export class VoiceCallWebhookServer {
   private fullConfig: OpenClawConfig | null;
   private agentRuntime: OpenClawPluginApi["runtime"]["agent"] | null;
   private logger: PluginLogger;
-  private stopStaleCallReaper: (() => void) | null = null;
+  private stopStaleCallReaper: (() => Promise<void>) | null = null;
   private readonly webhookInFlightLimiter = createWebhookInFlightLimiter();
 
   private mediaStreamHandler: MediaStreamHandler | null = null;
@@ -195,6 +196,7 @@ export class VoiceCallWebhookServer {
   private replayResponseCacheCalls = 0;
 
   constructor(
+    private readonly scheduler: PluginServiceSchedulerV1,
     config: VoiceCallConfig,
     manager: CallManager,
     provider: VoiceCallProvider,
@@ -576,6 +578,7 @@ export class VoiceCallWebhookServer {
         resolve(url);
 
         this.stopStaleCallReaper = startStaleCallReaper({
+          scheduler: this.scheduler,
           manager: this.manager,
           staleCallReaperSeconds: this.config.staleCallReaperSeconds,
         });
@@ -606,14 +609,13 @@ export class VoiceCallWebhookServer {
     });
     this.startPromise = null;
     this.streamDisconnectGrace.close();
-    if (this.stopStaleCallReaper) {
-      this.stopStaleCallReaper();
-      this.stopStaleCallReaper = null;
-    }
+    const reaperStopped = this.stopStaleCallReaper?.();
+    this.stopStaleCallReaper = null;
     this.webhookInFlightLimiter.clear();
 
     this.stopPromise = (async () => {
       const results = await Promise.allSettled([
+        reaperStopped,
         serverClosePromise,
         this.mediaStreamHandler?.close(serverClosePromise) ?? Promise.resolve(),
         this.realtimeHandler?.close(serverClosePromise) ?? Promise.resolve(),
